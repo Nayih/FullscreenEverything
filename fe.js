@@ -1,5 +1,24 @@
+var highlightOverlay = document.getElementById("fs-custom-overlay");
 var bak_target;
 var bak_backgroundColor;
+var bak_outline;
+var bak_overflow;
+
+if (!highlightOverlay) {
+    highlightOverlay = document.createElement("div");
+    highlightOverlay.id = "fs-custom-overlay";
+
+    Object.assign(highlightOverlay.style, {
+        position: 'absolute',
+        backgroundColor: 'rgba(255, 0, 0, 0.4)',
+        border: '2px solid red',
+        pointerEvents: 'none',
+        zIndex: '2147483647',
+        display: 'none'
+    });
+    document.body.appendChild(highlightOverlay);
+}
+
 if (registered == undefined) {
     var registered = false;
 }
@@ -10,9 +29,8 @@ if (selecting == undefined) {
 if (!registered) {
     document.addEventListener("mouseover", mouseOver);
     document.addEventListener("mouseout", mouseOut);
-    document.addEventListener("click", click);
+    document.addEventListener("click", click, true);
     document.addEventListener("fullscreenchange", fschange);
-    document.addEventListener("keydown", keydown);
     registered = true;
 }
 
@@ -20,46 +38,71 @@ selecting = true;
 
 function mouseOver(event) {
     if (selecting) {
-        bak_target = event.target;
-        bak_target.classList.add("FullscreenEverything_Hover");
+        var rect = event.target.getBoundingClientRect();
+        
+        highlightOverlay.style.width = rect.width + "px";
+        highlightOverlay.style.height = rect.height + "px";
+        highlightOverlay.style.top = (rect.top + window.scrollY) + "px";
+        highlightOverlay.style.left = (rect.left + window.scrollX) + "px";
+        highlightOverlay.style.display = "block";
     }
 }
 
 function mouseOut(event) {
     if (selecting) {
-        event.target.classList.remove("FullscreenEverything_Hover");
+        highlightOverlay.style.display = "none";
     }
 }
 
 function click(event) {
-    /* only fullscreen when not  */
-    if (selecting && !document.fullscreenElement) {
-        selecting = false;
-        event.target.requestFullscreen();
-        event.target.classList.remove("FullscreenEverything_Hover");
-        // save style
-        bak_target = event.target;
-        bak_backgroundColor = event.target.style.backgroundColor;
-        // set style
-        event.target.style.backgroundColor = getBGC(event.target);
-        event.target.classList.add("FullscreenEverything_Fullscreen");
+    if (selecting) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            event.target.requestFullscreen();
+            if (highlightOverlay) highlightOverlay.style.display = "none";
+            
+            bak_target = event.target;
+            bak_backgroundColor = event.target.style.backgroundColor;
+            bak_outline = event.target.style.outline;
+            bak_overflow = event.target.style.overflow;
+            
+            event.target.style.backgroundColor = getBGC(event.target);
+            event.target.style.overflow = "auto";
+            
+            selecting = true; 
+        }
     }
 }
 
 function fschange() {
-    // if exit fullscreen
     if (!document.fullscreenElement) {
-        // restore style
-        bak_target.style.backgroundColor = bak_backgroundColor;
-        bak_target.classList.remove("FullscreenEverything_Fullscreen");
+        if (bak_target) {
+            bak_target.style.backgroundColor = bak_backgroundColor;
+            bak_target.style.outline = bak_outline;
+            bak_target.style.overflow = bak_overflow;
+        }
+        
+        terminateExtension();
     }
 }
 
-function keydown(event) {
-    if (event.key == "Escape" && selecting) {
-        selecting = false;
-        bak_target.classList.remove("FullscreenEverything_Hover");
+function terminateExtension() {
+    selecting = false;
+    registered = false;
+    
+    if (highlightOverlay) {
+        highlightOverlay.style.display = "none";
     }
+
+    document.removeEventListener("mouseover", mouseOver);
+    document.removeEventListener("mouseout", mouseOut);
+    document.removeEventListener("click", click);
+    document.removeEventListener("fullscreenchange", fschange);
 }
 
 function getBGC(elem) {
