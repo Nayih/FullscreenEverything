@@ -30,8 +30,18 @@ if (!registered) {
     document.addEventListener("mouseover", mouseOver);
     document.addEventListener("mouseout", mouseOut);
     document.addEventListener("click", click, true);
+    document.addEventListener("mousedown", silenceEvent, true);
+    document.addEventListener("mouseup", silenceEvent, true);
     document.addEventListener("fullscreenchange", fschange);
     registered = true;
+}
+
+function silenceEvent(event) {
+    if (selecting) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
 }
 
 selecting = true;
@@ -94,15 +104,14 @@ function fschange() {
 function terminateExtension() {
     selecting = false;
     registered = false;
+    if (highlightOverlay) highlightOverlay.style.display = "none";
     
-    if (highlightOverlay) {
-        highlightOverlay.style.display = "none";
-    }
-
     document.removeEventListener("mouseover", mouseOver);
     document.removeEventListener("mouseout", mouseOut);
-    document.removeEventListener("click", click);
     document.removeEventListener("fullscreenchange", fschange);
+    document.removeEventListener("click", click, true);
+    document.removeEventListener("mousedown", silenceEvent, true);
+    document.removeEventListener("mouseup", silenceEvent, true);
 }
 
 function getBGC(elem) {
